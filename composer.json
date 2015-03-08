@@ -1,0 +1,11 @@
+{
+    "name": "qafoogalaxy/foorge.loadbalancer",
+    "description": "Loadbalancer/Router for public traffic to Foorge cluster using HAProxy",
+    "license": "MIT",
+    "type": "ansible-role",
+    "require": {
+        "qafoogalaxy/installer": "@stable",
+        "qafoogalaxy/foorge.base": "@stable"
+    }
+}
+

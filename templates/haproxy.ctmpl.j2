@@ -1,0 +1,27 @@
+frontend http-in
+    mode http
+    bind *:80
+
+{% for item in loadbalancer_public_domains if item.port|default(80) == 80 %}
+    acl host_{{ foorge_app }}_{{ item.process }} hdr_dom(host) -i {{ item.server }}
+    use_backend foorge_{{ foorge_app }}_{{ item.process }} if host_{{ foorge_app }}_{{ item.process }}
+
+{% endfor %}
+
+frontend https-in
+    mode http
+    bind *:443 ssl {% for item in loadbalancer_public_domains if item.port|default(80) == 443 %}crt /etc/haproxy/ssl/{{ item.certificate|default('selfsigned') }}.pem{% endfor %}
+
+{% for item in loadbalancer_public_domains if item.port|default(80) == 443 %}
+    use_backend foorge_{{ foorge_app }}_{{ item.process }} if { ssl_fc_sni {{ item.server }} }
+
+{% endfor %}
+
+{% for item in loadbalancer_public_domains %}
+backend foorge_{{ foorge_app }}_{{ item.process }}
+    mode http
+    {% raw %}{{range service "{% endraw %}{{ item.process }}.{{ foorge_app }}{% raw %}"}}
+    server {{.Node}} {{.Address}}:{{.Port}}{{end}}
+    {% endraw %}
+
+{% endfor %}

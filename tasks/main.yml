@@ -1,0 +1,47 @@
+---
+- name: "register haproxy ppa"
+  apt_repository: repo="ppa:vbernat/haproxy-1.5" update_cache=yes
+
+- name: "install haproxy"
+  apt: pkg=haproxy state=latest
+
+- name: "add conf directory for haproxy"
+  file: path={{ item }} state=directory owner=haproxy group=haproxy
+  with_items:
+      - "/etc/haproxy/conf.d"
+      - "/etc/haproxy/ssl"
+      - "/run/haproxy"
+
+- name: "Create self-signed SSL cert /etc/haproxy/ssl/selfsigned.crt"
+  shell: >
+     openssl req -new -nodes -x509 -subj "{{ loadbalancer_selfsigned_subject }}" -days 3650 -keyout /etc/haproxy/ssl/selfsigned.key -out /etc/haproxy/ssl/selfsigned.crt -extensions v3_ca; cat /etc/haproxy/ssl/selfsigned.crt /etc/haproxy/ssl/selfsigned.key > /etc/haproxy/ssl/selfsigned.pem
+     creates=/etc/haproxy/ssl/selfsigned.crt
+
+- name: "configure environment defaults"
+  lineinfile: >
+    dest=/etc/default/haproxy
+    regexp="^#?{{ item.env }}="
+    line="{{ item.env }}={{ item.value }}"
+  with_items:
+      - { env: 'ENABLED', value: '1' }
+      - { env: 'CONFIG', value: '/etc/haproxy/consul_haproxy.cfg' }
+      - { env: 'EXTRAOPTS', value: '`for FILE in \`find /etc/haproxy/conf.d/*.cfg -type f | sort -n\`; do CONFIGS=\"$CONFIGS -f $FILE\"; done; echo $CONFIGS`' }
+
+- name: "generate consul haproxy.ctmpl"
+  template: >
+      src=haproxy.ctmpl.j2
+      dest=/etc/haproxy/conf.d/{{ foorge_app }}.ctmpl
+  register: loadbalancer_ctmpl_changed
+
+- name: "generate consul haproxy.hcl"
+  template: >
+      src=haproxy.hcl.j2
+      dest=/etc/consul.template.d/haproxy.hcl
+  register: loadbalancer_haproxyhcl_changed
+
+- name: "Restart consul.template"
+  service: name=consul-template state=restarted
+  when: loadbalancer_haproxyhcl_changed|changed or loadbalancer_ctmpl_changed|changed
+
+- name: "start haproxy"
+  service: name=haproxy state=started

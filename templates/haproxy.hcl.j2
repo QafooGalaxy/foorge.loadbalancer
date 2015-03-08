@@ -1,0 +1,5 @@
+template {
+    source = "/etc/haproxy/conf.d/{{ foorge_app }}.ctmpl"
+    destination = "/etc/haproxy/conf.d/{{ foorge_app }}.conf"
+    command = "/etc/init.d/haproxy reload || true"
+}

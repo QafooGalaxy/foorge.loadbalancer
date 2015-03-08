@@ -1,0 +1,3 @@
+---
+loadbalancer_selfsigned_subject: "/C=DE/ST=Northrhine-Westfalia/L=Bonn/O=IT/CN={{ ansible_fqdn }}"
+loadbalancer_public_domains: []
