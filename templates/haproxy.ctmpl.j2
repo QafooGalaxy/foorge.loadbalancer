@@ -8,6 +8,10 @@ frontend http-in
 
 {% endfor %}
 
+{% set has_ssl = false %}
+{% for item in loadbalancer_public_domains if item.port|default(80) == 443 %}{% set has_ssl = true %}{% endfor %}
+
+{% if has_ssl %}
 frontend https-in
     mode http
     bind *:443 ssl {% for item in loadbalancer_public_domains if item.port|default(80) == 443 %}crt /etc/haproxy/ssl/{{ item.certificate|default('selfsigned') }}.pem{% endfor %}
@@ -16,6 +20,7 @@ frontend https-in
     use_backend foorge_{{ foorge_app }}_{{ item.process }} if { ssl_fc_sni {{ item.server }} }
 
 {% endfor %}
+{% endif %}
 
 {% for item in loadbalancer_public_domains %}
 backend foorge_{{ foorge_app }}_{{ item.process }}
